@@ -8,8 +8,8 @@
 
 With OpenRadioss, scientists and technologists can focus their research on a stable code base under professional maintenance that benefits from the large library of existing finite element capabilities and the continuous integration and continuous development tools provided to contributors.
 
-For more information on OpenRadioss project, please visit the OpenRadioss GitHub at [https://github.com/OpenRadioss/OpenRadioss](https://github.com/OpenRadioss/OpenRadioss) or the OpenRadioss web page [www.openradioss.org](https://www.openradioss.org)
-If you have any questions about OpenRadioss, please feel free to contact <webmaster@openradioss.org>.
+For more information on OpenRadioss project, please visit the OpenRadioss GitHub at [https://github.com/OpenCourant/OpenCourant](https://github.com/OpenCourant/OpenCourant) or the OpenRadioss web page [opencourant.org](https://opencourant.org)
+If you have any questions about OpenRadioss, please feel free to contact <hello@opencourant.org>.
 
 ## What is OpenRadioss Tools
 
@@ -19,18 +19,18 @@ Tools Repository is dedicated to hosts tools for OpenRadioss:
 
 OpenRadioss GUI is a graphical launcher for OpenRadioss
 
-[https://github.com/OpenRadioss/tools/tree/main/openradioss_gui](https://github.com/OpenRadioss/tools/tree/main/openradioss_gui)
+[https://github.com/OpenCourant/Tools/tree/main/openradioss_gui](https://github.com/OpenCourant/Tools/tree/main/openradioss_gui)
 
 ## Input converters
 
-* [inp2rad](https://github.com/OpenRadioss/tools/tree/main/input_converters/inp2rad) : converts .inp format to Radioss (.rad) format.
+* [inp2rad](https://github.com/OpenCourant/Tools/tree/main/input_converters/inp2rad) : converts .inp format to Radioss (.rad) format.
 
 ## Output converter
 
 * anim_to_csv : converts OpenRadioss animation files to csv format.
 * th_to_nms   : converts OpenRadioss time history files to nms format.
 
-[https://github.com/OpenRadioss/tools/tree/main/output_converters](https://github.com/OpenRadioss/tools/tree/main/output_converters)
+[https://github.com/OpenCourant/Tools/tree/main/output_converters](https://github.com/OpenCourant/Tools/tree/main/output_converters)
 
 * Animation to d3plot converter can be found on [Vortex-CAE GitHub repository](https://github.com/Vortex-CAE/Vortex-Radioss)
 
@@ -40,7 +40,7 @@ OpenRadioss GUI is a graphical launcher for OpenRadioss
 The user library is generated using the userlib_sdk. The userlib_sdk is a collection of different platforms and compilers to create libraries.
 Each platform/compiler set has a `build_script`, a static library and Fortran Module files. Those will permit to generate the user library.
 
-[https://github.com/OpenRadioss/tools/tree/main/userlib_sdk](https://github.com/OpenRadioss/tools/tree/main/userlib_sdk)
+[https://github.com/OpenCourant/Tools/tree/main/userlib_sdk](https://github.com/OpenCourant/Tools/tree/main/userlib_sdk)
 
 ## How to contribute in Tools
 

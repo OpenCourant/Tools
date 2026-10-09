@@ -159,15 +159,15 @@ class window:
 
     # Private methods for menu bar
     def _latestv_dialog(self):
-          webbrowser.open("https://github.com/OpenRadioss/OpenRadioss/releases")
+          webbrowser.open("https://github.com/OpenCourant/OpenCourant/releases")
     def _latestgui_dialog(self):
-          webbrowser.open("https://github.com/OpenRadioss/Tools/tree/main/openradioss_gui")
+          webbrowser.open("https://github.com/OpenCourant/Tools/tree/main/openradioss_gui")
     def _latestvrad_dialog(self):
           webbrowser.open("https://github.com/Vortex-CAE/Vortex-Radioss")
     def _latestvtkh_dialog(self):
           webbrowser.open("https://gitlab.kitware.com/keu-public/openradioss-to-vtkhdf")
     def _orweb_dialog(self):
-          webbrowser.open("https://openradioss.org")
+          webbrowser.open("https://opencourant.org")
     def _about_dialog(self):
           messagebox.showinfo("About", "this job submission gui is from OpenRadioss tools" )
     def _set_mpi_path_dialog(self):

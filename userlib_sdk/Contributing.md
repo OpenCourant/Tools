@@ -1,6 +1,6 @@
 # How to contribute in the userlib_sdk
 
-Welcome! You can report issues [here](https://github.com/OpenRadioss/OpenRadioss_userlib_sdk/issues) or ask questions [there](https://github.com/OpenRadioss/OpenRadioss_userlib_sdk/discussions).
+Welcome! You can report issues [here](https://github.com/OpenCourant/Tools/issues) or ask questions [there](https://github.com/orgs/OpenCourant/discussions).
 
 * [Contributing code to OpenRadioss userlib sdk](#contributing-code-to-openRadioss-userlib-sdk)
 * [Guidelines and coding style](#Guidelines-and-coding-style)

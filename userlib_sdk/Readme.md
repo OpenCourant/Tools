@@ -8,8 +8,8 @@
 
 With OpenRadioss, scientists and technologists can focus their research on a stable code base under professional maintenance that benefits from the large library of existing finite element capabilities and the continuous integration and continuous development tools provided to contributors.
 
-For more information on OpenRadioss project, please visit the OpenRadioss GitHub at [https://github.com/OpenRadioss/OpenRadioss](https://github.com/OpenRadioss/OpenRadioss) or the OpenRadioss web page [www.openradioss.org](https://www.openradioss.org)
-If you have any questions about OpenRadioss, please feel free to contact <webmaster@openradioss.org>.
+For more information on OpenRadioss project, please visit the OpenRadioss GitHub at [https://github.com/OpenCourant/OpenCourant](https://github.com/OpenCourant/OpenCourant) or the OpenRadioss web page [opencourant.org](https://opencourant.org)
+If you have any questions about OpenRadioss, please feel free to contact <hello@opencourant.org>.
 
 ## What is OpenRadioss userlib_sdk
 

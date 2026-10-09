@@ -30,7 +30,7 @@ The D3plot converter can be found at: [Vortex-CAE GitHub repository](https://git
           apt-get install python3
           apt install python3-tk
 
-* Get latest [OpenRadioss Release](https://github.com/OpenRadioss/OpenRadioss/releases)
+* Get latest [OpenRadioss Release](https://github.com/OpenCourant/OpenCourant/releases)
 
 * Copy the contents of openradioss_gui folder in an OpenRadioss Release Download.
 

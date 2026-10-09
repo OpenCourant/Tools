@@ -1,6 +1,6 @@
 # How to contribute in the Tools repository
 
-Welcome! You can report issues [here](https://github.com/OpenRadioss/Tools/issues) for questions, you can use OpenRadioss Git Forum [there](https://github.com/OpenRadioss/OpenRadioss/discussions).
+Welcome! You can report issues [here](https://github.com/OpenCourant/Tools/issues) for questions, you can use OpenRadioss Git Forum [there](https://github.com/OpenCourant/OpenCourant/discussions).
 
 * [Contributing code to OpenRadioss Tools](#contributing-code-to-openradioss-tools)
 * [Guidelines and coding style](#guidelines-and-coding-style)
