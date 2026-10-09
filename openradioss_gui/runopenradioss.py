@@ -141,7 +141,7 @@ class RunOpenRadioss():
            print("Extension: ",self.extension)
            print("Run ID: ",self.run_id)
            print("Running Directory: ",self.running_directory)
-           print("OpenRadioss Path: ",self.openradioss_path)
+           print("OpenCourant Path: ",self.openradioss_path)
            print("MPI Path: ",self.mpi_path)
     # --------------------------------------------------------------
     # retrieve deck type & job name

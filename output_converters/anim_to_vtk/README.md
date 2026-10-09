@@ -1,6 +1,6 @@
 # anim_to_vtk
 
-anim_to_vtk is an external tool to convert OpenRadioss animation files to legacy vtk ascii format.
+anim_to_vtk is an external tool to convert OpenCourant animation files to legacy vtk ascii format.
 
 ## How to build
 
@@ -11,7 +11,7 @@ gcc/g++ compiler installation requested.
 Enter the platform directory : anim_to_vtk/linux64
 Apply the build script : ./build.bash
 
-Executable will be copied in [OpenRadioss]/exec directory
+Executable will be copied in [OpenCourant]/exec directory
 
 ### Linux ARM64
 
@@ -20,7 +20,7 @@ gcc/g++ compiler installation requested.
 Enter the platform directory : anim_to_vtk/linuxa64
 Apply the build script : ./build.bash
 
-Executable will be copied in [OpenRadioss]/exec directory
+Executable will be copied in [OpenCourant]/exec directory
 
 ### Windows
 
@@ -30,7 +30,7 @@ Launch Visual Studio Shell for X86-64 Native tools.
 Enter the platform directory : anim_to_vtk/win64
 Apply the script : build.bat
 
-Executable is copied in [OpenRadioss]/exec
+Executable is copied in [OpenCourant]/exec
 
 ## How to use
 
@@ -48,11 +48,11 @@ Following Linux bash script can be used to convert all files in a single task:
         # Script to be lanch in Animation file directory
         #
         Rootname=[Deck Rootname]
-        OpenRadioss_root=[Path to OpenRadioss installation]
+        OpenCourant_root=[Path to OpenCourant installation]
         for file in `ls ${Rootname}A*`
         do
           animation_number=${file#"${Rootname}A"}
-          ${OpenRadioss_root}/exec/anim_to_vtk_linuxa64_gf $file > ${Rootname}_${animation_number}.vtk
+          ${OpenCourant_root}/exec/anim_to_vtk_linuxa64_gf $file > ${Rootname}_${animation_number}.vtk
         done
 
 In Paraview, the vtk files are bundled and can be loaded in one step.

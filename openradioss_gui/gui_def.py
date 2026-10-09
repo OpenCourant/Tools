@@ -35,7 +35,7 @@ class window:
     def __init__(self, vd3penabled, vtkhdfenabled,mpi_path,sp_status,starter_status,vtk_status,csv_status,vtkhdf_status,d3plot_status,script_dir):
 
         self.root = tk.Tk()
-        self.root.title('OpenRadioss')
+        self.root.title('OpenCourant')
         self.vd3penabled = vd3penabled
         self.vtkhdfenabled = vtkhdfenabled
         self.mpi_path = mpi_path

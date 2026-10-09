@@ -6697,9 +6697,9 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
         print("")
         print(f"Reading Completed in   {elapsed_time:8.3f} seconds")
         print("")
-        print(f"OpenRadioss Starter written to: {output_file_name}")
+        print(f"OpenCourant Starter written to: {output_file_name}")
         print("")
-        print(f"OpenRadioss Engine written to:  {engine_file_name}")
+        print(f"OpenCourant Engine written to:  {engine_file_name}")
         print("")
 
     else:

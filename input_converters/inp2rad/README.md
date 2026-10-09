@@ -3,9 +3,9 @@
 ## Description
 
 This Python script converts .inp format to Radioss (.rad) format.
-It can be used as a standalone tool or as a plugin to the [OpenRadioss gui tool](https://github.com/OpenCourant/Tools/tree/main/openradioss_gui).
+It can be used as a standalone tool or as a plugin to the [OpenCourant gui tool](https://github.com/OpenCourant/Tools/tree/main/openradioss_gui).
 It is provided “as is”, and should be considered as 'beta' today, but has been successfully tested on a wide range of explicit models and already supports most commonly used element formulations, material laws, loadings and boundary conditions.
-Through provision of this tool, we hope to further enhance the accessibility of OpenRadioss by enabling the use of open-source pre-processors supporting the .inp format such as [PrePoMax](https://prepomax.fs.um.si).
+Through provision of this tool, we hope to further enhance the accessibility of OpenCourant by enabling the use of open-source pre-processors supporting the .inp format such as [PrePoMax](https://prepomax.fs.um.si).
 
 ## Installation
 
@@ -25,9 +25,9 @@ You need to have a python3 installation on Linux or Windows.
           apt install python3-tk
 
  
- ## Use With OpenRadioss Gui if self compiling
+ ## Use With OpenCourant Gui if self compiling
 
- inp2rad is packaged with comiled distributed OpenRadioss releases, these steps are needed only when self compiling OpenRadioss
+ inp2rad is packaged with comiled distributed OpenCourant releases, these steps are needed only when self compiling OpenCourant
 
  install openradioss_gui from tools
 

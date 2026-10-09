@@ -91,7 +91,7 @@ Under Windows
 
 The Default name of the library is libraduser_linux64.so for Linux X64, libraduser_linuxa64.so for Linux Arm64 and libraduser_win64.dll for Windows.
 
-## Executing with OpenRadioss
+## Executing with OpenCourant
 
 ### Using environment variable : RAD_USERLIB_LIBPATH and default library name
 
@@ -99,13 +99,13 @@ The Default name of the library is libraduser_linux64.so for Linux X64, libradus
 
       export RAD_USERLIB_LIBPATH=[Path to library]
       
-   OpenRadioss will find  libraduser_linux64.so library in the folder.
+   OpenCourant will find  libraduser_linux64.so library in the folder.
 
 * under Windows / cmd.exe
 
      set RAD_USERLIB_LIBPATH=[Path to library]
 
-### Using -dylib OpenRadioss command line argument
+### Using -dylib OpenCourant command line argument
   
    Command line argument permits to git an other name to the library:
 

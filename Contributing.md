@@ -1,11 +1,11 @@
 # How to contribute in the Tools repository
 
-Welcome! You can report issues [here](https://github.com/OpenCourant/Tools/issues) for questions, you can use OpenRadioss Git Forum [there](https://github.com/OpenCourant/OpenCourant/discussions).
+Welcome! You can report issues [here](https://github.com/OpenCourant/Tools/issues) for questions, you can use OpenCourant Git Forum [there](https://github.com/OpenCourant/OpenCourant/discussions).
 
-* [Contributing code to OpenRadioss Tools](#contributing-code-to-openradioss-tools)
+* [Contributing code to OpenCourant Tools](#contributing-code-to-openradioss-tools)
 * [Guidelines and coding style](#guidelines-and-coding-style)
 
-## Contributing code to OpenRadioss Tools
+## Contributing code to OpenCourant Tools
 
 You must be aware of the [license](./Copyright.md).
 
@@ -15,7 +15,7 @@ You must be aware of the [license](./Copyright.md).
 
 * Check Howto.md files in different directories for build instructions and git installation.
 
-  * Userlib_sdk : [How to Build OpenRadioss userlib_sdk](./userlib_sdk/Howto.md).
+  * Userlib_sdk : [How to Build OpenCourant userlib_sdk](./userlib_sdk/Howto.md).
 
 * Create your github account
 
@@ -25,7 +25,7 @@ You must be aware of the [license](./Copyright.md).
       Check Email Settings boxes `Keep my email addresses private` and  `Block command line pushes that expose my email` [here](https://github.com/settings/emails)
     * Add your ssh key [SSH key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent).
 
-* [fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) the OpenRadioss/Tools repository
+* [fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) the OpenCourant/Tools repository
 
 #### On your computer
 
@@ -36,13 +36,13 @@ You must be aware of the [license](./Copyright.md).
 
 * [clone](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) your fork and go into the newly created `openRadioss/Tools` directory.
 
-       git clone git@github.com:OpenRadioss/Tools
+       git clone git@github.com:OpenCourant/Tools
        
 * Add the official repository as a remote:
 
-       git remote add upstream git@github.com:OpenRadioss/Tools.git
+       git remote add upstream git@github.com:OpenCourant/Tools.git
 
-  Now `origin` points to your fork, and `upstream` points to the official OpenRadioss repository
+  Now `origin` points to your fork, and `upstream` points to the official OpenCourant repository
 
 ### Contribution workflow
 
@@ -67,7 +67,7 @@ It is not recommended to push commits directly into your `main` branch. This bra
   * `git rebase -i main` provided that your current branch is derived from the `main` branch.
   * To squash all your commits into your first one: replace `pick` by `squash` on for all your commits except your first one. Do not squash your commits into someone else's commit. Do not embed someone else's commit into your squashed commit.
 
-* Rebase your work on the latest version of OpenRadioss (you can also follow [this](https://openpbs.atlassian.net/wiki/spaces/DG/pages/1183744006/Rebasing+Your+Dev+Branch))
+* Rebase your work on the latest version of OpenCourant (you can also follow [this](https://openpbs.atlassian.net/wiki/spaces/DG/pages/1183744006/Rebasing+Your+Dev+Branch))
   * `git pull --rebase upstream main`  
   * Solve conflicts, loop over:  
     * Edit conflicting files and resolve conflicts

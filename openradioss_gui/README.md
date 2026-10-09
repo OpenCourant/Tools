@@ -1,8 +1,8 @@
-# OpenRadioss GUI
+# OpenCourant GUI
 
-OpenRadioss GUI is a graphical launcher for OpenRadioss on Linux and Windows.
+OpenCourant GUI is a graphical launcher for OpenCourant on Linux and Windows.
 
-It is a simple Python/tk based tool to execute OpenRadioss, queue jobs and convert OpenRadioss output files to csv, vtk, d3plot at the end of the run
+It is a simple Python/tk based tool to execute OpenCourant, queue jobs and convert OpenCourant output files to csv, vtk, d3plot at the end of the run
 
 The D3plot converter can be found at: [Vortex-CAE GitHub repository](https://github.com/Vortex-CAE/Vortex-Radioss)
 
@@ -15,7 +15,7 @@ The D3plot converter can be found at: [Vortex-CAE GitHub repository](https://git
 * Python3 must be installed on the system.
 
   Recommended Python3 version is 3.8 or higher.
-  OpenRadioss_GUI was tested with Python 3.6.8, some features may not work.
+  OpenCourant_GUI was tested with Python 3.6.8, some features may not work.
 
   * On ***Windows***, install Python from [https://www.python.org/downloads/](https://www.python.org/downloads/)
   * On ***Linux***, install python from your OS Repository.
@@ -30,16 +30,16 @@ The D3plot converter can be found at: [Vortex-CAE GitHub repository](https://git
           apt-get install python3
           apt install python3-tk
 
-* Get latest [OpenRadioss Release](https://github.com/OpenCourant/OpenCourant/releases)
+* Get latest [OpenCourant Release](https://github.com/OpenCourant/OpenCourant/releases)
 
-* Copy the contents of openradioss_gui folder in an OpenRadioss Release Download.
+* Copy the contents of openradioss_gui folder in an OpenCourant Release Download.
 
 ## Execution using GUI Mode
 
-* Launch the **OpenRadioss_gui.vbs** on Windows
-* Launch the **OpenRadioss_gui.bash** on Linux
+* Launch the **OpenCourant_gui.vbs** on Windows
+* Launch the **OpenCourant_gui.bash** on Linux
 
-![image](./icon/OpenRadioss_gui.jpg)
+![image](./icon/OpenCourant_gui.jpg)
 
 ### Launch a job
 
@@ -63,26 +63,26 @@ The D3plot converter can be found at: [Vortex-CAE GitHub repository](https://git
 
         C:\Program Files (x86)\Intel\oneAPI\mpi\latest
 
-  * ***Linux X86-64 (linux64_gf)***: Path to OpenMPI. OpenRadioss guidelines for OpenMPI locates it in:
+  * ***Linux X86-64 (linux64_gf)***: Path to OpenMPI. OpenCourant guidelines for OpenMPI locates it in:
 
         /opt/openmpi
 
-  * ***Linux ARM64 (linuxa64)***: Path to OpenMPI. OpenRadioss guidelines for OpenMPI locates it in:
+  * ***Linux ARM64 (linuxa64)***: Path to OpenMPI. OpenCourant guidelines for OpenMPI locates it in:
 
         /opt/openmpi
 
 ### Info
 
-* Menu with usefull informations about OpenRadioss
+* Menu with usefull informations about OpenCourant
 
 #### Run Options
 
 Set optional execution options
 
-* **Single Precision**  in Run Options dropdown enables the OpenRadioss single precision version
+* **Single Precision**  in Run Options dropdown enables the OpenCourant single precision version
 * **Run Starter Only** in Run Options dropdown executes Starter only.
-* **Anim - vtk** in Run Options dropdown invokes the Animation to VTK converter at the end of OpenRadioss Engine simulation.
-* **TH - csv** in Run Options dropdown invokes the TH to CSV converter at the end of OpenRadioss Engine simulation.
+* **Anim - vtk** in Run Options dropdown invokes the Animation to VTK converter at the end of OpenCourant Engine simulation.
+* **TH - csv** in Run Options dropdown invokes the TH to CSV converter at the end of OpenCourant Engine simulation.
 * **Show Queue** and **Clear Queue** buttons manage the run queue.
 * The **info** menu has links to the downloads section of github and an ‘About’ credit to the script creators
 * ***Anim - d3plot** in Run Options dropdown appears only if Vortex-CAE D3plot converter is detected.
@@ -90,7 +90,7 @@ Set optional execution options
 
 ### The Run Window
 
-The **Run Windows** has the OpenRadioss output.
+The **Run Windows** has the OpenCourant output.
 
 ![image](./icon/job_window.png)
 
@@ -113,20 +113,20 @@ The Job Queue shows jobs queued along with the options chosen, with the buttons 
 
 ## Execution using Batch Mode
 
-OpenRadioss GUI can be used in batch mode for scripting
+OpenCourant GUI can be used in batch mode for scripting
 
 Launch
 
-* **[Path to OpenRadioss]/openradioss_gui/OpenRadioss_gui.bash -h** on Linux
-* **[Path to OpenRadioss]\openradioss_gui\OpenRadioss_gui.bat -h** on Windows
+* **[Path to OpenCourant]/openradioss_gui/OpenCourant_gui.bash -h** on Linux
+* **[Path to OpenCourant]\openradioss_gui\OpenCourant_gui.bat -h** on Windows
 
 To obtain the command line help:
 
-      usage: OpenRadioss_gui.py [-h] [-gui] [-i INPUT] [-nt n] [-np p] [-sp] [-starter] 
+      usage: OpenCourant_gui.py [-h] [-gui] [-i INPUT] [-nt n] [-np p] [-sp] [-starter] 
                                 [-th_to_csv] [-anim_to_vtk] [-anim_to_d3plot]  
                                 [-anim_to_vtkhdf] [-mpi_path MPI_PATH] [-d]
 
-      OpenRadioss GUI
+      OpenCourant GUI
 
       options:
         -h, --help                         show this help message and exit
@@ -146,7 +146,7 @@ To obtain the command line help:
 ### Typical launch method in SMP
 
 1. Enter the execution directory (where the input deck is)
-2. [Path to OpenRadioss]/openradioss_gui/OpenRadioss_gui.bash -i [Input_Deck] -nt [t]
+2. [Path to OpenCourant]/openradioss_gui/OpenCourant_gui.bash -i [Input_Deck] -nt [t]
 
 ### Typical launch method in MPI
 
@@ -158,19 +158,19 @@ Check your MPI settings in the Shell:
 #### If MPI settings are already set in shell
 
 1. Enter the execution directory (where the input deck is)
-2. [Path to OpenRadioss]/openradioss_gui/OpenRadioss_gui.bash -i [Input_Deck] -np [p]
+2. [Path to OpenCourant]/openradioss_gui/OpenCourant_gui.bash -i [Input_Deck] -np [p]
 
 #### If MPI settings are not set in the shell
 
 1. Enter the execution directory (where the input deck is)
-2. [Path to OpenRadioss]/openradioss_gui/OpenRadioss_gui.bash -i [Input_Deck] -np [p] -mpi_path [path to MPI installation]
+2. [Path to OpenCourant]/openradioss_gui/OpenCourant_gui.bash -i [Input_Deck] -np [p] -mpi_path [path to MPI installation]
 
 **Example**:
 
 * On Windows:
 
-      OpenRadioss_gui.bat -i CRA2V44_0000.rad -np 4 -mpi_path "c:\Program Files (x86)\Intel\oneAPI\mpi\2021.16"
+      OpenCourant_gui.bat -i CRA2V44_0000.rad -np 4 -mpi_path "c:\Program Files (x86)\Intel\oneAPI\mpi\2021.16"
 
 * On Linux
 
-      OpenRadioss_gui.bash -i CRA2V44_0000.rad -np 4  -mpi_path=/opt/openmpi
+      OpenCourant_gui.bash -i CRA2V44_0000.rad -np 4  -mpi_path=/opt/openmpi

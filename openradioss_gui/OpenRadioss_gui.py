@@ -287,7 +287,7 @@ if __name__ == "__main__":
 #----------------------------- GUI Elements #--------------------------------
 # File Menu
   num_args = len(sys.argv) - 1
-  parser = argparse.ArgumentParser(description='OpenRadioss GUI')
+  parser = argparse.ArgumentParser(description='OpenCourant GUI')
   parser.add_argument('-gui', '--gui',action='store_true', default=False, help='Enable GUI mode')
   parser.add_argument('-i', '--input', type=str, help='The input file to process in form:  filename<.k|.key>, filename_<runnumber 4 digits>.rad or filename.inp')
   parser.add_argument('-nt', '--nt', type=int, metavar='n', help='Number of threads')

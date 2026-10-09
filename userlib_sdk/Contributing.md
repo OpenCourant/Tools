@@ -2,11 +2,11 @@
 
 Welcome! You can report issues [here](https://github.com/OpenCourant/Tools/issues) or ask questions [there](https://github.com/orgs/OpenCourant/discussions).
 
-* [Contributing code to OpenRadioss userlib sdk](#contributing-code-to-openRadioss-userlib-sdk)
+* [Contributing code to OpenCourant userlib sdk](#contributing-code-to-openRadioss-userlib-sdk)
 * [Guidelines and coding style](#Guidelines-and-coding-style)
 
 
-## Contributing code to OpenRadioss userlib sdk
+## Contributing code to OpenCourant userlib sdk
 
 You must be aware of the [license](./Copyright.md).
 
@@ -14,7 +14,7 @@ You must be aware of the [license](./Copyright.md).
 
 #### On GitHub Website
 
-* Check the  [How to Build OpenRadioss userlib_sdk](./Howto.md) for build instructions, and git installation.
+* Check the  [How to Build OpenCourant userlib_sdk](./Howto.md) for build instructions, and git installation.
 * Create your github account
     * Review your account setting, in particular: [email](https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-user-account/managing-email-preferences/setting-your-commit-email-address), [2FA](https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa/configuring-two-factor-authentication)
     * Setup your git user name and [email](https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-user-account/managing-email-preferences/setting-your-commit-email-address). 
@@ -22,7 +22,7 @@ You must be aware of the [license](./Copyright.md).
       Check Email Settings boxes `Keep my email addresses private` and  `Block command line pushes that expose my email` [here](https://github.com/settings/emails)
     * Add your ssh key [SSH key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent). 
 
-* [fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) the OpenRadioss_userlib_sdk repository        
+* [fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) the OpenCourant_userlib_sdk repository        
 
 #### On your computer
 
@@ -33,13 +33,13 @@ You must be aware of the [license](./Copyright.md).
     
 * [clone](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) your fork and go into the newly created `openRadioss_userlib_sdk` directory. 
 
-       git clone git@github.com:OpenRadioss/OpenRadioss_userlib_sdk
+       git clone git@github.com:OpenCourant/OpenCourant_userlib_sdk
        
 * Add the official repository as a remote: 
 
-       git remote add upstream git@github.com:OpenRadioss/OpenRadioss.git
+       git remote add upstream git@github.com:OpenCourant/OpenCourant.git
 
-  Now `origin` points to your fork, and `upstream` points to the official OpenRadioss repository
+  Now `origin` points to your fork, and `upstream` points to the official OpenCourant repository
 
 
 ### Contribution workflow 
@@ -67,7 +67,7 @@ It is not recommended to push commits directly into your `main` branch. This bra
     * `git rebase -i main` provided that your current branch is derived from the `main` branch. 
     *  To squash all your commits into your first one: replace `pick` by `squash` on for all your commits except your first one. Do not squash your commits into someone else's commit. Do not embed someone else's commit into your squashed commit. 
 
-* Rebase your work on the latest version of OpenRadioss (you can also follow [this](https://openpbs.atlassian.net/wiki/spaces/DG/pages/1183744006/Rebasing+Your+Dev+Branch))
+* Rebase your work on the latest version of OpenCourant (you can also follow [this](https://openpbs.atlassian.net/wiki/spaces/DG/pages/1183744006/Rebasing+Your+Dev+Branch))
     * `git pull --rebase upstream main`  
     * Solve conflicts, loop over:  
        * Edit conflicting files and resolve conflicts 

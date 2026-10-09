@@ -66,7 +66,7 @@ Linux system with glibc version 2.17 or higher:
 
     * CentOS/RHEL 7, CentOS Stream 8, RHEL 8, Rocky Linux 8, Rocky Linux 9
     * Ubuntu 20.0.4 or higher
-    * Windows Subsystem for Linux: OpenRadioss works with WSL/WSL2 Ubuntu 20.04 LTS, WSL2 Ubuntu 22.x
+    * Windows Subsystem for Linux: OpenCourant works with WSL/WSL2 Ubuntu 20.04 LTS, WSL2 Ubuntu 22.x
 
 #### Linux x64 gfortran: Compiler and development tools
 
@@ -100,15 +100,15 @@ Install as sudo or root
 
 #### Linux x64 gfortran: How to build userlib_sdk
 
-* clone the source code from the OpenRadioss/Tools or your fork [GitHubUser]/Tools
+* clone the source code from the OpenCourant/Tools or your fork [GitHubUser]/Tools
 
-  * From OpenRadioss/Tools respository
+  * From OpenCourant/Tools respository
 
-         git clone git@github.com:OpenRadioss/OpenRadioss/Tools
+         git clone git@github.com:OpenCourant/OpenCourant/Tools
 
   * From your Fork
 
-         git clone git@github.com:OpenRadioss/[GitHub User]/Tools
+         git clone git@github.com:OpenCourant/[GitHub User]/Tools
 
 * Enter **userlib_sdk** directory and run `./build_script.bash` :
 
@@ -127,7 +127,7 @@ Linux system with glibc version 2.17 or higher:
 
 * CentOS/RHEL 7, CentOS Stream 8, RHEL 8, Rocky Linux 8, Rocky Linux 9
 * Ubuntu 20.0.4 or higher
-* Windows Subsystem for Linux: OpenRadioss works with WSL/WSL2 Ubuntu 20.04 LTS, WSL2 Ubuntu 22.x
+* Windows Subsystem for Linux: OpenCourant works with WSL/WSL2 Ubuntu 20.04 LTS, WSL2 Ubuntu 22.x
 
 #### Linux x64 Intel oneAPI: Compiler and development tools
 
@@ -158,15 +158,15 @@ Load the compiler variables:
 
 #### Linux x64 Intel oneAPI: How to build userlib_sdk
 
-* clone the source code from the OpenRadioss/Tools or your fork [GitHubUser]/Tools
+* clone the source code from the OpenCourant/Tools or your fork [GitHubUser]/Tools
 
-  * From OpenRadioss respository
+  * From OpenCourant respository
 
-         git clone git@github.com:OpenRadioss/OpenRadioss/Tools
+         git clone git@github.com:OpenCourant/OpenCourant/Tools
 
   * From your Fork
 
-         git clone git@github.com:OpenRadioss/[GitHub User]/Tools
+         git clone git@github.com:OpenCourant/[GitHub User]/Tools
 
 * Enter **userlib_sdk** directory and run `./build_script.bash` :
 
@@ -183,7 +183,7 @@ Load the compiler variables:
 
 #### Windows x64 Intel oneAPI: Compiler Environment
 
-OpenRadioss was tested with oneAPI 2023.2 + Visual Studio 2019.
+OpenCourant was tested with oneAPI 2023.2 + Visual Studio 2019.
 Issues have been found with earlier oneAPI releases. It is not recommended to use previous versions.
 
 This chapter explains how to setup
@@ -230,15 +230,15 @@ This chapter explains how to setup
 
 #### Windows x64 Intel oneAPI: How to build userlib_sdk
 
-* clone the source code from the OpenRadioss/Tools or your fork [GitHubUser]/Tools
+* clone the source code from the OpenCourant/Tools or your fork [GitHubUser]/Tools
 
-  * From OpenRadioss respository
+  * From OpenCourant respository
 
-         git clone git@github.com:OpenRadioss/OpenRadioss/Tools
+         git clone git@github.com:OpenCourant/OpenCourant/Tools
 
   * From your Fork
 
-         git clone git@github.com:OpenRadioss/[GitHub User]/Tools
+         git clone git@github.com:OpenCourant/[GitHub User]/Tools
 
 * In a cmd.exe shell :
 
@@ -311,15 +311,15 @@ For more information, please visit [https://www.mingw-w64.org](https://www.mingw
 
 #### Windows x64 mingw gfortran: How to build userlib_sdk
 
-* clone the source code from the OpenRadioss/Tools or your fork [GitHubUser]/Tools
+* clone the source code from the OpenCourant/Tools or your fork [GitHubUser]/Tools
 
-  * From OpenRadioss respository
+  * From OpenCourant respository
 
-         git clone git@github.com:OpenRadioss/OpenRadioss/Tools
+         git clone git@github.com:OpenCourant/OpenCourant/Tools
 
   * From your Fork
 
-         git clone git@github.com:OpenRadioss/[GitHub User]/Tools
+         git clone git@github.com:OpenCourant/[GitHub User]/Tools
 
 * Enter userlib_sdk directory and apply `build_windows.bat`:
 
@@ -363,15 +363,15 @@ Linux system with glibc version 2.17 or higher:
 
 #### Linux arm64 arm compilers: How to build userlib_sdk
 
-* clone the source code from the OpenRadioss/Tools or your fork [GitHubUser]/Tools
+* clone the source code from the OpenCourant/Tools or your fork [GitHubUser]/Tools
 
-  * From OpenRadioss respository
+  * From OpenCourant respository
 
-         git clone git@github.com:OpenRadioss/OpenRadioss/Tools
+         git clone git@github.com:OpenCourant/OpenCourant/Tools
 
   * From your Fork
 
-         git clone git@github.com:OpenRadioss/[GitHub User]/Tools
+         git clone git@github.com:OpenCourant/[GitHub User]/Tools
 
 * Enter userlib_sdk directory and apply `./build_script.bash`:
 
@@ -423,15 +423,15 @@ Install as sudo or root
 
 #### Linux arm64 gfortran: How to build userlib_sdk
 
-* clone the source code from the OpenRadioss/Tools or your fork [GitHubUser]/Tools
+* clone the source code from the OpenCourant/Tools or your fork [GitHubUser]/Tools
 
-  * From OpenRadioss respository
+  * From OpenCourant respository
 
-         git clone git@github.com:OpenRadioss/OpenRadioss/Tools
+         git clone git@github.com:OpenCourant/OpenCourant/Tools
 
   * From your Fork
 
-         git clone git@github.com:OpenRadioss/[GitHub User]/Tools
+         git clone git@github.com:OpenCourant/[GitHub User]/Tools
 
 * Enter userlib_sdk directory and apply `./build_script.bash`:
 
