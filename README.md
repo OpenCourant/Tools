@@ -11,6 +11,8 @@ With OpenCourant, scientists and technologists can focus their research on a sta
 For more information on OpenCourant project, please visit the OpenCourant GitHub at [https://github.com/OpenCourant/OpenCourant](https://github.com/OpenCourant/OpenCourant) or the OpenCourant web page [opencourant.org](https://opencourant.org)
 If you have any questions about OpenCourant, please feel free to contact <hello@opencourant.org>.
 
+OpenCourant is an Incubator Project of the [Rocky Enterprise Software Foundation](https://www.resf.org).
+
 ## What is OpenCourant Tools
 
 Tools Repository is dedicated to hosts tools for OpenCourant:
