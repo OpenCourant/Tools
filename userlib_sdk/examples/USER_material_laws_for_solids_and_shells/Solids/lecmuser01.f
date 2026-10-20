@@ -26,7 +26,7 @@ C=================================================================
 C     This subroutine reads the user material parameters. 
 C================================================================= 
       SUBROUTINE LECMUSER01(IIN,IOUT,UPARAM,MAXUPARAM,NUPARAM, 
-     .                NUVAR,IFUNC,MAXFUNC,NFUNC,STIFINT, 
+     .                NUVAR,IFUNC,MAXFUNC,NFUNC,PARMAT, 
      .                USERBUF) 
       USE LAW_USER 
 C----------------------------------------------- 
@@ -38,7 +38,7 @@ C   D u m m y   A r g u m e n t s
 C----------------------------------------------- 
       INTEGER IIN,IOUT,MAXUPARAM,NUPARAM,NUVAR,MAXFUNC,NFUNC, 
      .        IFUNC(MAXFUNC) 
-      DOUBLE PRECISION   UPARAM(MAXUPARAM),STIFINT 
+      DOUBLE PRECISION   UPARAM(MAXUPARAM),PARMAT(*) 
 C----------------------------------------------- 
       TYPE(ULAWBUF) :: USERBUF  
 C----------------------------------------------- 
@@ -90,7 +90,7 @@ C-----------------------------------------------
 C     USED FOR SOLIDS  
 C----------------------------------------------- 
 C used for interface (solid+shell) 
-      STIFINT = A11 
+      PARMAT(1) = A11 
 C 
 C------------------------------------------------- 
 C     OUTPUT FILE PRINT  
