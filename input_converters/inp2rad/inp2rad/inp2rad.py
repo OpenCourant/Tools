@@ -23,6 +23,7 @@ import sys
 import re
 import time
 import argparse
+import math
 
 #---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|
 #-  GLOBAL VARIABLES SECTION
@@ -42,6 +43,71 @@ radversion = 2025 #2023: for compatibility with HM 2025 and Radioss <2024
                   #or 2025: for OpenRadioss, enables s2s tied contact and icontrol for solids
 
 debug_mode = False # enables writing of commments and intermediate files for debugging
+
+# Canonical element families and their connectivity length.  This is the
+# single source of truth for the element reader and the ELSET helpers.
+ELEMENT_NODE_COUNTS = {
+    'MASS': 1, 'DCOUP3D': 1,
+    'CONN3D2': 2, 'SPRINGA': 2,
+    'S3': 3, 'S4': 4, 'S6': 6, 'S8': 8,
+    'C3D4': 4, 'C3D6': 6, 'C3D8': 8, 'C3D10': 10,
+    'C3D15': 15, 'C3D20': 20, 'C3D27': 27,
+    # single-segment beams and 2-D continuum elements (input node counts)
+    'B31': 2, 'B32': 3, 'TRIA': 3, 'QUAD': 4,
+    'CPS3': 3, 'CPE3': 3, 'CAX3': 3,
+    'CPS6': 6, 'CPE6': 6, 'CAX6': 6,
+    'CPS4': 4, 'CPS4R': 4, 'CPE4': 4, 'CPE4R': 4, 'CAX4': 4, 'CAX4R': 4,
+    'CPS8': 8, 'CPS8R': 8, 'CPE8': 8, 'CPE8R': 8, 'CAX8': 8, 'CAX8R': 8,
+}
+
+TWO_D_TRIANGLES = {'TRIA', 'CPS3', 'CPE3', 'CAX3', 'CPS6', 'CPE6', 'CAX6'}
+TWO_D_QUADS = {
+    'QUAD', 'CPS4', 'CPS4R', 'CPE4', 'CPE4R', 'CAX4', 'CAX4R',
+    'CPS8', 'CPS8R', 'CPE8', 'CPE8R', 'CAX8', 'CAX8R',
+}
+
+# Abaqus spellings that share a Radioss conversion.  Keeping aliases in one
+# table means a new variant needs no changes in the reader or the writer.
+ELEMENT_ALIASES = {
+    # shells
+    'S3R': 'S3', 'S3RS': 'S3', 'M3D3': 'S3', 'R3D3': 'S3', 'SFM3D3': 'S3',
+    'S4R': 'S4', 'S4RS': 'S4', 'S4RSW': 'S4', 'S4RT': 'S4', 'S4R5': 'S4',
+    'M3D4': 'S4', 'M3D4R': 'S4', 'R3D4': 'S4',
+    'SFM3D4': 'S4', 'SFM3D4R': 'S4',
+    'S6R': 'S6', 'S8R': 'S8', 'S8RT': 'S8',
+    # tetrahedra
+    'DC3D4': 'C3D4',
+    'C3D10M': 'C3D10', 'C3D10H': 'C3D10', 'C3D10MH': 'C3D10',
+    'C3D10MT': 'C3D10', 'C3D10MHT': 'C3D10', 'DC3D10': 'C3D10',
+    # prisms (Radioss uses a degenerate /BRICK for solid wedges)
+    'DC3D6': 'C3D6', 'COH3D6': 'C3D6', 'SC6R': 'C3D6',
+    'C3D15V': 'C3D15', 'DC3D15': 'C3D15',
+    # hexahedra
+    'C3D8I': 'C3D8', 'C3D8R': 'C3D8', 'C3D8RH': 'C3D8', 'DC3D8': 'C3D8',
+    'COH3D8': 'C3D8', 'SC8R': 'C3D8',
+    'C3D20R': 'C3D20', 'C3D20H': 'C3D20', 'C3D20HT': 'C3D20',
+    'C3D20RT': 'C3D20', 'DC3D20': 'C3D20',
+    'C3D27R': 'C3D27', 'C3D27H': 'C3D27', 'C3D27RH': 'C3D27',
+    # beams (B32 is degraded to a straight two-node /BEAM)
+    'B31H': 'B31', 'B33': 'B31', 'B33H': 'B31',
+    'PIPE31': 'B31', 'PIPE31H': 'B31',
+    'B32H': 'B32', 'PIPE32': 'B32', 'PIPE32H': 'B32',
+    # 2-D continuum elements keep their Abaqus name so that the reader
+    # sees the right connectivity length; the writer maps them via
+    # TWO_D_TRIANGLES / TWO_D_QUADS below.
+}
+
+
+def canonical_element_type(element_type):
+    """Map an Abaqus element name to the family handled by the writer."""
+    name = str(element_type).strip().upper()
+    return ELEMENT_ALIASES.get(name, name)
+
+
+def element_node_count(element_type):
+    """Number of connectivity entries for an Abaqus element type (0 if unknown)."""
+    return ELEMENT_NODE_COUNTS.get(canonical_element_type(element_type), 0)
+
 
 #---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|
 # Functions to convert aspects of the .inp Model
@@ -180,6 +246,10 @@ def convert_nodes(node_data):
             nodes = line.strip().split(',')
             node_id = nodes[0].strip()
             coords = [float(coord.strip()) for coord in nodes[1:]]
+            if len(coords) == 2:
+                # Abaqus 2-D models live in the X-Y plane; Radioss 2-D
+                # elements are defined in the global Y-Z plane.
+                coords = [0.0, coords[0], coords[1]]
             radioss_coords = ''.join(f"{coord:>20.15g}" for coord in coords)
             node_lines[transform_id].append(f"{node_id:>10}{radioss_coords}")
 
@@ -1999,6 +2069,8 @@ def convert_props(input_lines, material_names, non_numeric_references=None, else
         dcoup_line_match = re.search(dcoup_line_pattern, line, re.IGNORECASE)
         spring_line_pattern = r'^\s*\*SPRING\s*,\s*ELSET\s*=\s*[^,]+\s*,?.*$'
         spring_line_match = re.search(spring_line_pattern, line, re.IGNORECASE)
+        beam_line_pattern = r'^\s*\*BEAM\s+(?:GENERAL\s+)?SECTION\s*,'
+        beam_line_match = re.search(beam_line_pattern, line, re.IGNORECASE)
 
         if shell_line_match or shell_general_match:
             section_type = 'shell'
@@ -2079,6 +2151,38 @@ def convert_props(input_lines, material_names, non_numeric_references=None, else
             if i < len(input_lines):
                 next_line = input_lines[i].strip()
                 spring_stiffness = next_line.split(',')[0].strip()
+
+        elif beam_line_match:
+            section_type = 'beam'
+            mat_match = re.search(r'material\s*=\s*([^,]+)', line, re.IGNORECASE)
+            sect_match = re.search(r'section\s*=\s*([^,]+)', line, re.IGNORECASE)
+            elset_match = re.search(elset_pattern, line, re.IGNORECASE)
+            if elset_match:
+                property_name = elset_match.group(1).strip()
+            if mat_match:
+                material_name = mat_match.group(1).strip()
+            beam_section = sect_match.group(1).strip() if sect_match else 'RECT'
+            beam_dims = []
+            beam_orientation = [0.0, 0.0, -1.0]
+            i += 1
+            if i < len(input_lines) and not input_lines[i].strip().startswith('*'):
+                values = []
+                for value in input_lines[i].strip().split(','):
+                    try:
+                        values.append(float(value.strip()))
+                    except ValueError:
+                        pass
+                beam_dims = values
+                i += 1
+                if i < len(input_lines) and not input_lines[i].strip().startswith('*'):
+                    vec = []
+                    for value in input_lines[i].strip().split(','):
+                        try:
+                            vec.append(float(value.strip()))
+                        except ValueError:
+                            pass
+                    if len(vec) == 3:
+                        beam_orientation = vec
 
         elif massdef_line_match:
             section_type = 'massdef'
@@ -2282,6 +2386,16 @@ def convert_props(input_lines, material_names, non_numeric_references=None, else
             prop_id += 1
             part_id_counter += 1
 
+        elif section_type == 'beam':
+            property_names[property_name] = {'prop_id': prop_id, 'part_id': part_id_counter}
+            property_names[property_name]['nint'] = '444'
+            property_names[property_name]['beam_section'] = beam_section
+            property_names[property_name]['beam_dims'] = beam_dims
+            property_names[property_name]['beam_orientation'] = beam_orientation
+            property_names[property_name]['material_name'] = material_name
+            prop_id += 1
+            part_id_counter += 1
+
         elif section_type == 'solid':
             prop_id, part_id_counter = assign_property_to_elsets(property_name, section_type, prop_id, part_id_counter)
             used_helper_function = True
@@ -2440,12 +2554,56 @@ def write_props(property_names, output_file):
             output_file.write(property_display_name + "\n")
             output_file.write("#   Ismstr                                                                            True_Thickness\n")
             output_file.write("        -1                                                                                          \n")
+        elif prop_type == '444': #444 is code for beam elements (/BEAM)
+            dims = property_data.get('beam_dims', [])
+            section = property_data.get('beam_section', 'RECT').upper()
+            def beam_first_dim(index, default):
+                return float(dims[index]) if len(dims) > index else default
+            b = beam_first_dim(0, 1.0)
+            h = beam_first_dim(1, b)
+            if section == 'CIRC':
+                radius = b / 2.0
+                area = math.pi * radius ** 2
+                inertia = math.pi * radius ** 4 / 4.0
+                iyy = izz = inertia
+            elif section in ('PIPE', 'THICK PIPE'):
+                thickness = beam_first_dim(1, b / 10.0)
+                radius = max(b / 2.0 - thickness / 2.0, thickness / 2.0)
+                area = 2.0 * math.pi * radius * thickness
+                inertia = math.pi * radius ** 3 * thickness
+                iyy = izz = inertia
+            elif section == 'BOX' and len(dims) > 2:
+                t = min(beam_first_dim(2, b / 10.0), b / 2.0, h / 2.0)
+                area = b * h - (b - 2 * t) * (h - 2 * t)
+                iyy = (h * b ** 3 - (h - 2 * t) * (b - 2 * t) ** 3) / 12.0
+                izz = (b * h ** 3 - (b - 2 * t) * (h - 2 * t) ** 3) / 12.0
+            else:
+                if section not in ('RECT', 'BOX'):
+                    print(f"### WARNING ###: Beam section {section} approximated as a rectangle")
+                area = b * h
+                iyy = h * b ** 3 / 12.0
+                izz = b * h ** 3 / 12.0
+            ixx = iyy + izz
+            output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
+            output_file.write(f"/PROP/BEAM/{property_id}\n")
+            output_file.write(property_display_name + "\n")
+            output_file.write("#   Ismstr\n")
+            output_file.write("         4\n")
+            output_file.write("#      dm        df\n")
+            output_file.write("         0        .01\n")
+            output_file.write("#          Area          Iyy          Izz          Ixx\n")
+            output_file.write(f"{area:>20.12g}{iyy:>20.12g}{izz:>20.12g}{ixx:>20.12g}\n")
+            output_file.write("#  Rot  Ishear\n")
+            output_file.write(" 000 000         0\n")
         elif prop_type == '999': #999 is code for Solids
             output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
             output_file.write(f"/PROP/SOLID/{property_id}\n")
             output_file.write(property_display_name + "\n")
             output_file.write("#   Isolid    Ismstr               Icpre  Itetra10     Inpts   Itetra4    Iframe                  dn\n")
-            output_file.write("        24        -1                  -1         2         0         3        -1                  .1\n")
+            # Isolid=16 is required by 16- and 20-node solid elements; 24 is
+            # the usual formulation for 4/8/10-node solids.
+            isolid = 16 if property_data.get('quadratic_solid') else 24
+            output_file.write(f"{isolid:>10}" + "        -1                  -1         2         0         3        -1                  .1\n")
             output_file.write("#                q_a                 q_b                   h            LAMBDA_V                MU_V\n")
             output_file.write("                 1.1                 .05                   0                   0                   0\n")
             output_file.write("#             dt_min            Vdef_min            Vdef_max             ASP_max             COL_min\n")
@@ -2869,14 +3027,7 @@ def process_element_block(current_element_block, current_element_type, max_elem_
     element_data_str = element_data_str.replace(' ', '')
 
     # Determine the number of nodes based on the element_type
-    element_type_nodes = {
-        'MASS': 1, 'DCOUP3D': 1, 'CONN3D2': 2, 'SPRINGA': 2, 'S3': 3, 'S3R': 3, 'M3D3': 3,
-        'R3D3': 3, 'S4': 4, 'S4R': 4, 'R3D4': 4, 'M3D4R': 4, 'C3D4': 4,
-        'C3D6': 6, 'COH3D6': 6, 'SC6R': 6, 'SC8R': 8, 'C3D8': 8,
-        'C3D8I': 8, 'COH3D8': 8,'C3D8R': 8, 'C3D10': 10, 'C3D10M': 10
-    }
-
-    num_nodes = element_type_nodes.get(current_element_type.upper(), 0)
+    num_nodes = element_node_count(current_element_type)
 
     if num_nodes == 0:
         print("")
@@ -2894,7 +3045,8 @@ def process_element_block(current_element_block, current_element_type, max_elem_
             print(f"element type {current_element_type} is not yet supported by inp2rad")
             print("please try to use an alternative")
             print("process will attempt to continue the best it can")
-            input("Press Enter to continue...")
+            if sys.stdin.isatty():
+                input("Press Enter to continue...")
             print ("")
 
         return [element_list, max_elem_id]
@@ -2951,7 +3103,40 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, propert
     brick_list = []
     spring_list = []
 
+    def add_to_elset(elset, element_id):
+        """Track an element in its ELSET when that ELSET is referenced elsewhere."""
+        if elset in elset_dicts:
+            elset_dicts[elset].append(element_id)
+
+    def mark_quadratic_solid(property_id):
+        """Ask /PROP/SOLID for the Isolid=16 formulation used by /BRIC20."""
+        for prop_data in property_names.values():
+            if prop_data.get('prop_id') == property_id:
+                prop_data['quadratic_solid'] = True
+
+    def property_for(prop_id):
+        for prop_data in property_names.values():
+            if prop_data.get('prop_id') == prop_id:
+                return prop_data
+        return {}
+
+    # Radioss needs /ANALY to declare a 2-D analysis; without it the starter
+    # rejects /TRIA and /QUAD elements (error 286).
+    type_names = [str(t).upper() for t in element_dicts]
+    analysis_type = None
+    if any(name.startswith('CAX') for name in type_names):
+        analysis_type = 1              # axisymmetric, Y radial / Z axis
+    elif any(name.startswith(('CPS', 'CPE')) for name in type_names):
+        analysis_type = 2              # plane strain (Radioss has no plane stress)
+    if analysis_type is not None:
+        if analysis_type == 2 and any(str(t).upper().startswith('CPS')
+                                      for t in element_dicts):
+            print("### WARNING ###: Plane stress is approximated by Radioss plane strain (/ANALY N2D3D=2)")
+        element_lines.extend(["/ANALY", f"{analysis_type:>10}         0", ""])
+
     for element_type, element_list in element_dicts.items():
+        etype = canonical_element_type(element_type).lower()
+        raw_type = str(element_type).strip().upper()
 
         for element_dict in element_list:
             elset = element_dict["ELSET"]
@@ -2970,7 +3155,7 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, propert
             property_id = element_dict["PROP_ID"]
             part_id = element_dict.get("PART_ID", property_id)  # Get part_id or fallback to prop_id
 
-            if element_type.lower() == "mass":
+            if etype == "mass":
                 nset_counter += 1
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"# Node Set for Masses from Elset: {part_name}")
@@ -2990,7 +3175,7 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, propert
                     formatted_nodes = ''.join(value.rjust(10) for value in chunk)  # Format as fixed-width
                     element_lines.append(formatted_nodes)  # Append to output
 
-            elif element_type.lower() == "conn3d2" or element_type.lower() == "springa":
+            elif etype == "conn3d2" or etype == "springa":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"# Spring Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
@@ -3004,11 +3189,7 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, propert
                     formatted_nodes = ''.join([value.rjust(10) for value in nodes])
                     element_lines.append(f"{element_id:>10}{formatted_nodes}")
 
-            elif (element_type.lower() == "s3"
-                or element_type.lower() == "s3r"
-                or element_type.lower() == "r3d3"
-                or element_type.lower() == "m3d3"
-                ):
+            elif etype == "s3":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"# 3 Noded Shell Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
@@ -3023,15 +3204,9 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, propert
                     element_lines.append(f"{element_id:>10}{formatted_nodes}")
 
                     #check if this elset is referenced in elset_dicts (means it maybe referenced by another card), add the element_id
-                    if elset in elset_dicts:
-                        elset_dict = elset_dicts[elset]
-                        elset_dict.append(element_id)
+                    add_to_elset(elset, element_id)
 
-            elif (element_type.lower() == "s4"
-                or element_type.lower() == "s4r"
-                or element_type.lower() == "r3d4"
-                or element_type.lower() == "m3d4r"
-                ):
+            elif etype == "s4":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"# 4 Noded Shell Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
@@ -3046,11 +3221,9 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, propert
                     element_lines.append(f"{element_id:>10}{formatted_nodes}")
 
                     #check if this elset is referenced in elset_dicts (means it maybe referenced by another card), add the element_id
-                    if elset in elset_dicts:
-                        elset_dict = elset_dicts[elset]
-                        elset_dict.append(element_id)
+                    add_to_elset(elset, element_id)
 
-            elif element_type.lower() == "c3d4":
+            elif etype == "c3d4":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"# 4 Noded Tetrahedral Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
@@ -3066,11 +3239,9 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, propert
                     element_lines.append(f"{element_id:>10}{formatted_nodes}")
 
                     #check if this elset is referenced in elset_dicts (means it maybe referenced by another card), add the element_id
-                    if elset in elset_dicts:
-                        elset_dict = elset_dicts[elset]
-                        elset_dict.append(element_id)
+                    add_to_elset(elset, element_id)
 
-            elif element_type.lower() == "c3d6":
+            elif etype == "c3d6":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"# 6 Noded Degenerated Penta Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
@@ -3086,54 +3257,9 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, propert
                     element_lines.append(f"{element_id:>10}{formatted_nodes}")
 
                     #check if this elset is referenced in elset_dicts (means it maybe referenced by another card), add the element_id
-                    if elset in elset_dicts:
-                        elset_dict = elset_dicts[elset]
-                        elset_dict.append(element_id)
+                    add_to_elset(elset, element_id)
 
-            elif element_type.lower() == "coh3d6":
-                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 6 Noded Degenerated Penta Cohesive Elements for PART: {part_name}, PID: {part_id}")
-                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"/BRICK/{part_id}")  # Output section header - use part_id
-                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
-                    element_id = element.get('element_id', '')
-                    # Add element_id to brick_list
-                    brick_list.append(element_id)
-                    nodes = ', '.join(element.get('nodes', []))
-                    nodes = nodes.split(', ')
-                    nodes = [nodes[0], nodes[1], nodes[2], nodes[2], nodes[3], nodes[4], nodes[5], nodes[5]]
-                    formatted_nodes = ''.join([value.rjust(10) for value in nodes])
-                    element_lines.append(f"{element_id:>10}{formatted_nodes}")
-
-                    #check if this elset is referenced in elset_dicts (means it maybe referenced by another card), add the element_id
-                    if elset in elset_dicts:
-                        elset_dict = elset_dicts[elset]
-                        elset_dict.append(element_id)
-
-            elif element_type.lower() == "sc6r":
-                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 6 Noded Degenerated Penta Elements for PART: {part_name}, PID: {part_id}")
-                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"/BRICK/{part_id}")  # Output section header - use part_id
-                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
-                    element_id = element.get('element_id', '')
-                    # Add element_id to brick_list
-                    brick_list.append(element_id)
-                    nodes = ', '.join(element.get('nodes', []))
-                    nodes = nodes.split(', ')
-                    nodes = [nodes[0], nodes[1], nodes[2], nodes[2], nodes[3], nodes[4], nodes[5], nodes[5]]
-                    formatted_nodes = ''.join([value.rjust(10) for value in nodes])
-                    element_lines.append(f"{element_id:>10}{formatted_nodes}")
-
-                    #check if this elset is referenced in elset_dicts (means it maybe referenced by another card), add the element_id
-                    if elset in elset_dicts:
-                        elset_dict = elset_dicts[elset]
-                        elset_dict.append(element_id)
-
-            elif (element_type.lower() == "c3d8"
-                or element_type.lower() == "c3d8i"
-                or element_type.lower() == "c3d8r"
-                ):
+            elif etype == "c3d8":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"# 8 Noded Brick Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
@@ -3148,51 +3274,9 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, propert
                     element_lines.append(f"{element_id:>10}{formatted_nodes}")
 
                     #check if this elset is referenced in elset_dicts (means it maybe referenced by another card), add the element_id
-                    if elset in elset_dicts:
-                        elset_dict = elset_dicts[elset]
-                        elset_dict.append(element_id)
+                    add_to_elset(elset, element_id)
 
-            elif element_type.lower() == "coh3d8":
-                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 8 Noded Cohesive Elements for PART: {part_name}, PID: {part_id}")
-                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"/BRICK/{part_id}")  # Output section header - use part_id
-                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
-                    element_id = element.get('element_id', '')
-                    # Add element_id to brick_list
-                    brick_list.append(element_id)
-                    nodes = ', '.join(element.get('nodes', []))
-                    nodes = nodes.split(',')
-                    formatted_nodes = ''.join([value.rjust(10) for value in nodes])
-                    element_lines.append(f"{element_id:>10}{formatted_nodes}")
-
-                    #check if this elset is referenced in elset_dicts (means it maybe referenced by another card), add the element_id
-                    if elset in elset_dicts:
-                        elset_dict = elset_dicts[elset]
-                        elset_dict.append(element_id)
-
-            elif element_type.lower() == "sc8r":
-                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"# 8 Noded Thick Shell Elements for PART: {part_name}, PID: {part_id}")
-                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
-                element_lines.append(f"/BRICK/{part_id}")  # Output section header - use part_id
-                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
-                    element_id = element.get('element_id', '')
-                    # Add element_id to brick_list
-                    brick_list.append(element_id)
-                    nodes = ', '.join(element.get('nodes', []))
-                    nodes = nodes.split(',')
-                    formatted_nodes = ''.join([value.rjust(10) for value in nodes])
-                    element_lines.append(f"{element_id:>10}{formatted_nodes}")
-
-                    #check if this elset is referenced in elset_dicts (means it maybe referenced by another card), add the element_id
-                    if elset in elset_dicts:
-                        elset_dict = elset_dicts[elset]
-                        elset_dict.append(element_id)
-
-            elif (element_type.lower() == "c3d10"
-                or element_type.lower() == "c3d10m"
-                ):
+            elif etype == "c3d10":
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
                 element_lines.append(f"# 10 Noded Tetrahedral Elements for PART: {part_name}, PID: {part_id}")
                 element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
@@ -3208,9 +3292,155 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, propert
                     element_lines.append(f"{element_id:>10}\n{formatted_nodes}")
 
                     #check if this elset is referenced in elset_dicts (means it maybe referenced by another card), add the element_id
-                    if elset in elset_dicts:
-                        elset_dict = elset_dicts[elset]
-                        elset_dict.append(element_id)
+                    add_to_elset(elset, element_id)
+
+            elif etype in ("c3d20", "c3d27"):
+                # Radioss /BRIC20 connectivity: 8 corners, bottom mid-edges,
+                # vertical mid-edges, then top mid-edges.  Abaqus puts the
+                # top mid-edges before the vertical ones.  C3D27 face-centre
+                # and centre nodes (21-27) have no /BRIC20 equivalent.
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"# 20 Noded Quadratic Brick Elements for PART: {part_name}, PID: {part_id}")
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"/BRIC20/{part_id}")
+                mark_quadratic_solid(property_id)
+                if etype == "c3d27":
+                    print("### WARNING ###: C3D27 face and centre nodes are dropped; only the 20 edge nodes are used")
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
+                    element_id = element.get('element_id', '')
+                    nodes = list(element.get('nodes', []))
+                    if len(nodes) < 20:
+                        print(f"### WARNING ###: Element {element_id} has {len(nodes)} nodes, expected 20 for /BRIC20")
+                        continue
+                    brick_list.append(element_id)
+                    bric20_nodes = nodes[:12] + nodes[16:20] + nodes[12:16]
+                    # Radioss writes the 20 connectivity entries as 8 + 8 + 4
+                    # fields (element ID on the first line), see stat_brick_*.F
+                    element_lines.append(
+                        f"{element_id:>10}"
+                        + ''.join(v.rjust(10) for v in bric20_nodes[:8]))
+                    element_lines.append(
+                        ''.join(v.rjust(10) for v in bric20_nodes[8:16]))
+                    element_lines.append(
+                        ''.join(v.rjust(10) for v in bric20_nodes[16:20]))
+                    add_to_elset(elset, element_id)
+
+            elif etype == "c3d15":
+                # Radioss has no quadratic pentahedron solid.  Degenerate the
+                # six corner nodes into an 8-noded /BRICK, as done for C3D6.
+                print("### WARNING ###: Quadratic pentahedra are converted to degenerate /BRICK elements (midside nodes dropped)")
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"# Degenerate 6 Noded Penta Elements for PART: {part_name}, PID: {part_id}")
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"/BRICK/{part_id}")
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
+                    element_id = element.get('element_id', '')
+                    nodes = list(element.get('nodes', []))
+                    if len(nodes) < 6:
+                        print(f"### WARNING ###: Element {element_id} has {len(nodes)} nodes, expected 6 for a pentahedron")
+                        continue
+                    brick_list.append(element_id)
+                    corners = nodes[:6]
+                    bric_nodes = [corners[0], corners[1], corners[2], corners[2],
+                                  corners[3], corners[4], corners[5], corners[5]]
+                    formatted_nodes = ''.join(value.rjust(10) for value in bric_nodes)
+                    element_lines.append(f"{element_id:>10}{formatted_nodes}")
+                    add_to_elset(elset, element_id)
+
+            elif etype in ("s8", "s8r"):
+                # Radioss explicit shells are 3- or 4-noded.  Keep the four
+                # corner nodes and drop the midside nodes.
+                print("### WARNING ###: 8-noded shells are converted to 4-noded /SHELL elements (midside nodes dropped)")
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"# 4 Noded Shell Elements for PART: {part_name}, PID: {part_id}")
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"/SHELL/{part_id}")
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
+                    element_id = element.get('element_id', '')
+                    nodes = list(element.get('nodes', []))
+                    if len(nodes) < 4:
+                        print(f"### WARNING ###: Element {element_id} has {len(nodes)} nodes, expected 4 for a quadrilateral shell")
+                        continue
+                    shell_list.append(element_id)
+                    formatted_nodes = ''.join(value.rjust(10) for value in nodes[:4])
+                    element_lines.append(f"{element_id:>10}{formatted_nodes}")
+                    add_to_elset(elset, element_id)
+
+            elif etype in ("s6", "s6r"):
+                # Same degradation for quadratic triangular shells.
+                print("### WARNING ###: 6-noded shells are converted to 3-noded /SH3N elements (midside nodes dropped)")
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"# 3 Noded Shell Elements for PART: {part_name}, PID: {part_id}")
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"/SH3N/{part_id}")
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
+                    element_id = element.get('element_id', '')
+                    nodes = list(element.get('nodes', []))
+                    if len(nodes) < 3:
+                        print(f"### WARNING ###: Element {element_id} has {len(nodes)} nodes, expected 3 for a triangular shell")
+                        continue
+                    sh3n_list.append(element_id)
+                    formatted_nodes = ''.join(value.rjust(10) for value in nodes[:3])
+                    element_lines.append(f"{element_id:>10}{formatted_nodes}")
+                    add_to_elset(elset, element_id)
+
+            elif etype in ("b31", "b32"):
+                # Radioss /BEAM has two end nodes and an orientation vector.
+                # The vector comes from *BEAM SECTION, or defaults to (0,0,-1).
+                if etype == "b32":
+                    print("### WARNING ###: Quadratic beams are written as straight two-node /BEAM elements")
+                orientation = property_for(property_id).get(
+                    'beam_orientation', [0.0, 0.0, -1.0])
+                vector = [float(value) for value in orientation[:3]]
+                while len(vector) < 3:
+                    vector.append(0.0)
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"# Beam Elements for PART: {part_name}, PID: {part_id}")
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"/BEAM/{part_id}")
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
+                    element_id = element.get('element_id', '')
+                    nodes = list(element.get('nodes', []))
+                    if len(nodes) < 2:
+                        print(f"### WARNING ###: Element {element_id} has fewer than 2 nodes for /BEAM")
+                        continue
+                    ends = [nodes[0], nodes[-1]] if etype == "b32" else nodes[:2]
+                    fields = ''.join(value.rjust(10) for value in ends + [f"{v:g}" for v in vector])
+                    element_lines.append(f"{element_id:>10}{fields}")
+                    add_to_elset(elset, element_id)
+
+            elif raw_type in TWO_D_TRIANGLES:
+                print("### WARNING ###: Radioss /TRIA only supports LAW151 (multifluid); elastic 2-D triangles may be rejected")
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"# 3 Noded 2D Solid Elements for PART: {part_name}, PID: {part_id}")
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"/TRIA/{part_id}")
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
+                    element_id = element.get('element_id', '')
+                    nodes = list(element.get('nodes', []))
+                    if len(nodes) < 3:
+                        print(f"### WARNING ###: Element {element_id} has fewer than 3 nodes for /TRIA")
+                        continue
+                    brick_list.append(element_id)
+                    element_lines.append(
+                        f"{element_id:>10}" + ''.join(v.rjust(10) for v in nodes[:3]))
+                    add_to_elset(elset, element_id)
+
+            elif raw_type in TWO_D_QUADS:
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"# 4 Noded 2D Solid Elements for PART: {part_name}, PID: {part_id}")
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"/QUAD/{part_id}")
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
+                    element_id = element.get('element_id', '')
+                    nodes = list(element.get('nodes', []))
+                    if len(nodes) < 4:
+                        print(f"### WARNING ###: Element {element_id} has fewer than 4 nodes for /QUAD")
+                        continue
+                    brick_list.append(element_id)
+                    element_lines.append(
+                        f"{element_id:>10}" + ''.join(v.rjust(10) for v in nodes[:4]))
+                    add_to_elset(elset, element_id)
 
     return elset_dicts, element_lines, sh3n_list, shell_list, brick_list, nsets, nset_counter
 
@@ -3449,15 +3679,13 @@ def convert_segments(element_dicts):
     if not segments_converted_already:
          segments_converted_already = True # Set the flag to True to indicate we have converted segments already
          for element_type, element_list in element_dicts.items():
+             etype = canonical_element_type(element_type).lower()
              for element_dict in element_list:
                  for element in element_dict["elements"]:
                      element_id = element.get('element_id', '')
                      nodes = element.get('nodes', [])
  ########### NB, all node indexing listed is from 0 (if there are 4 nodes in an element, they are nodes 0,1,2,3)
-                     if (element_type.lower() == 'c3d6'
-                         or element_type.lower() == 'coh3d6'
-                         or element_type.lower() == 'sc6r'
-                         ):
+                     if etype in ('c3d6', 'c3d15'):
                          s1_nodes = [nodes[0], nodes[2], nodes[1]]  # Order as 0, 2, 1
                          s2_nodes = [nodes[5], nodes[3], nodes[4]]  # Order as 5, 3, 4
                          s3_nodes = [nodes[0], nodes[1], nodes[4], nodes[3]]  # Order as 0, 1, 4, 3
@@ -3470,12 +3698,7 @@ def convert_segments(element_dicts):
                              's4': s4_nodes, 
                              's5': s5_nodes, 
                          }
-                     elif (element_type.lower() == 'c3d8'
-                         or element_type.lower() == 'c3d8i'
-                         or element_type.lower() == 'coh3d8'
-                         or element_type.lower() == 'c3d8r'
-                         or element_type.lower() == 'sc8r'
-                         ):
+                     elif etype in ('c3d8', 'c3d20', 'c3d27'):
                          s1_nodes = [nodes[0], nodes[3], nodes[2], nodes[1]]  # Order as 0, 3, 2, 1
                          s2_nodes = [nodes[7], nodes[4], nodes[5], nodes[6]]  # Order as 7, 4, 5, 6
                          s3_nodes = [nodes[0], nodes[1], nodes[5], nodes[4]]  # Order as 0, 1, 5, 4
@@ -3490,7 +3713,7 @@ def convert_segments(element_dicts):
                              's5': s5_nodes, 
                              's6': s6_nodes, 
                          }
-                     elif element_type.lower() == 'c3d4':
+                     elif etype in ('c3d4', 'c3d10'):
                          s1_nodes = [nodes[0], nodes[2], nodes[1]]  # Order as 0, 2, 1
                          s2_nodes = [nodes[0], nodes[1], nodes[3]]  # Order as 0, 1, 3
                          s3_nodes = [nodes[1], nodes[2], nodes[3]]  # Order as 1, 2, 3
@@ -3501,33 +3724,14 @@ def convert_segments(element_dicts):
                              's3': s3_nodes, 
                              's4': s4_nodes, 
                          }
-                     elif (element_type.lower() == 'c3d10'
-                         or element_type.lower() == 'c3d10m'):
-                         s1_nodes = [nodes[0], nodes[2], nodes[1]]  # Order as 0, 2, 1
-                         s2_nodes = [nodes[0], nodes[1], nodes[3]]  # Order as 0, 1, 3
-                         s3_nodes = [nodes[1], nodes[2], nodes[3]]  # Order as 1, 2, 3
-                         s4_nodes = [nodes[2], nodes[0], nodes[3]]  # Order as 2, 0, 3
-                         segment_dictionary[element_id] = {
-                             's1': s1_nodes,
-                             's2': s2_nodes,
-                             's3': s3_nodes, 
-                             's4': s4_nodes, 
-                         }
-                     elif (element_type.lower() == 's4'
-                         or element_type.lower() == 's4r'
-                         or element_type.lower() == 'r3d4'
-                         or element_type.lower() == 'm3d4r'):
+                     elif etype == 's4':
                          spos_nodes = [nodes[0], nodes[1], nodes[2], nodes[3]]  # Order as 0, 1, 2, 3
                          sneg_nodes = [nodes[3], nodes[2], nodes[1], nodes[0]]  # Order as 3, 2, 1, 0
                          segment_dictionary[element_id] = {
                              'spos': spos_nodes,
                              'sneg': sneg_nodes,
                          }
-                     elif (element_type.lower() == 's3'
-                         or element_type.lower() == 's3r'
-                         or element_type.lower() == 'r3d3'
-                         or element_type.lower() == 'm3d3'
-                         ):
+                     elif etype == 's3':
                          spos_nodes = [nodes[0], nodes[1], nodes[2]]  # Order as 0, 1, 2
                          sneg_nodes = [nodes[2], nodes[1], nodes[0]]  # Order as 2, 1, 0
                          segment_dictionary[element_id] = {
@@ -3891,7 +4095,7 @@ def convert_contacts(input_lines, property_names, surf_id, friction_dict, surf_n
                 property_id = int(property_data['prop_id'])
                 part_id = property_data.get('part_id', property_id)  # Use part_id for surface definition
                 # Append the integer 'part_id' to the list (excluding springs and dummy property for masses)
-                if (not property_data['nint'] == '777' and not property_data['nint'] == '555' and not property_data['nint'] == '666'
+                if (property_data['nint'] not in ('777', '555', '666', '444')
                 and part_id not in prop_id_list):
                     prop_id_list.append(part_id)
 
@@ -6713,7 +6917,7 @@ def write_output(transform_lines, transform_data, node_lines, nset_blocks, mater
         print("")
         print(f"Total Processing time: {elapsed_time:8.3f} seconds")
 
-    if not or_gui:
+    if not or_gui and sys.stdin.isatty():
         input("Press Enter to exit...")
 
     output_done = True
@@ -6939,53 +7143,7 @@ def create_part_elsets(input_lines):
                 print(f"this is the placeholder: {placeholder_elset_name} of type: {element_type}")
 
             # Determine the number of nodes based on the TYPE
-            num_nodes = 1  # Default fallback
-            if element_type == 'MASS':
-                num_nodes = 1
-            elif element_type == 'DCOUP3D':
-                num_nodes = 1
-            elif element_type == 'CONN3D2':
-                num_nodes = 2
-            elif element_type == 'SPRINGA':
-                num_nodes = 2
-            elif element_type == 'S3':
-                num_nodes = 3
-            elif element_type == 'S3R':
-                num_nodes = 3
-            elif element_type == 'M3D3':
-                num_nodes = 3
-            elif element_type == 'R3D3':
-                num_nodes = 3
-            elif element_type == 'S4':
-                num_nodes = 4
-            elif element_type == 'S4R':
-                num_nodes = 4
-            elif element_type == 'R3D4':
-                num_nodes = 4
-            elif element_type == 'M3D4R':
-                num_nodes = 4
-            elif element_type == 'C3D4':
-                num_nodes = 4
-            elif element_type == 'C3D6':
-                num_nodes = 6
-            elif element_type == 'COH3D6':
-                num_nodes = 6
-            elif element_type == 'SC6R':
-                num_nodes = 6
-            elif element_type == 'SC8R':
-                num_nodes = 8
-            elif element_type == 'C3D8':
-                num_nodes = 8
-            elif element_type == 'C3D8I':
-                num_nodes = 8
-            elif element_type == 'COH3D8':
-                num_nodes = 8
-            elif element_type == 'C3D8R':
-                num_nodes = 8
-            elif element_type == 'C3D10':
-                num_nodes = 10
-            elif element_type == 'C3D10M':
-                num_nodes = 10
+            num_nodes = element_node_count(element_type) or 1
 
             element_data = {}
 
@@ -7195,51 +7353,7 @@ def create_rigid_elsets(input_lines, elset_references):
             element_type = type_match.group(1) if type_match else "UNKNOWN_TYPE"
 
             # Determine the number of nodes based on the TYPE
-            num_nodes = 1  # Default fallback
-            if element_type == 'MASS':
-                num_nodes = 1
-            elif element_type == 'CONN3D2':
-                num_nodes = 2
-            elif element_type == 'SPRINGA':
-                num_nodes = 2
-            elif element_type == 'S3':
-                num_nodes = 3
-            elif element_type == 'S3R':
-                num_nodes = 3
-            elif element_type == 'M3D3':
-                num_nodes = 3
-            elif element_type == 'R3D3':
-                num_nodes = 3
-            elif element_type == 'S4':
-                num_nodes = 4
-            elif element_type == 'S4R':
-                num_nodes = 4
-            elif element_type == 'R3D4':
-                num_nodes = 4
-            elif element_type == 'M3D4R':
-                num_nodes = 4
-            elif element_type == 'C3D4':
-                num_nodes = 4
-            elif element_type == 'C3D6':
-                num_nodes = 6
-            elif element_type == 'COH3D6':
-                num_nodes = 6
-            elif element_type == 'SC6R':
-                num_nodes = 6
-            elif element_type == 'SC8R':
-                num_nodes = 8
-            elif element_type == 'C3D8':
-                num_nodes = 8
-            elif element_type == 'C3D8I':
-                num_nodes = 8
-            elif element_type == 'COH3D8':
-                num_nodes = 8
-            elif element_type == 'C3D8R':
-                num_nodes = 8
-            elif element_type == 'C3D10':
-                num_nodes = 10
-            elif element_type == 'C3D10M':
-                num_nodes = 10
+            num_nodes = element_node_count(element_type) or 1
 
             element_data = {}
 

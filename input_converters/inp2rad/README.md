@@ -97,51 +97,48 @@ Supported keywords: (not all sub-options necessarily supported):
 
 *DSLOAD, (Pressure Load Types P, P1, P2, P3, P4, P5, P6)
 
-*ELEMENT, *TYPE= 
-  
-         DCOUP3D
-       
-         CONN3D2, (RIGID or HINGE)
+*ELEMENT, *TYPE=
 
-         SPRINGA
-  
-         S3
-         
-         S3R
-         
-         M3D3
-  
-         R3D3
-  
-         S4
-         
-         S4R
-         
-         R3D4
-         
-         M3D4R
-         
-         C3D4
-         
-         C3D6
-         
-         COH3D6
-         
-         SC6R
-         
-         SC8R
-         
-         C3D8
-         
-         C3D8I
-  
-         COH3D8
-         
-         C3D8R
-         
-         C3D10
-         
-         C3D10M
+Supported Abaqus 3D element families (aliases share the same conversion):
+
+* shells: S3/S3R/M3D3/R3D3/SFM3D3/S3RS, S4/S4R/S4RS/S4RSW/S4RT/S4R5/
+  M3D4/M3D4R/R3D4/SFM3D4/SFM3D4R, S6/S6R, S8/S8R/S8RT
+  -> /SH3N (3 node), /SHELL (4 node); quadratic shells are degraded to
+  their linear counterparts with a warning
+* tetrahedra: C3D4/DC3D4 -> /TETRA4,
+  C3D10/C3D10M/C3D10H/C3D10MH/C3D10MT/C3D10MHT/DC3D10 -> /TETRA10
+* prisms: C3D6/DC3D6/SC6R/COH3D6, C3D15/C3D15V/DC3D15
+  -> degenerate /BRICK (no quadratic pentahedron exists in Radioss)
+* hexahedra: C3D8/C3D8R/C3D8I/C3D8RH/DC3D8/COH3D8/SC8R -> /BRICK,
+  C3D20/C3D20R/C3D20H/C3D20HT/C3D20RT/DC3D20 -> /BRIC20,
+  C3D27/C3D27R/C3D27H/C3D27RH -> /BRIC20 with the extra nodes dropped
+* masses/connectors: MASS, DCOUP3D, CONN3D2, SPRINGA
+
+Radioss has no `/BRIC27` keyword (even in the 2026 reference guide): the
+quadratic hexahedron offering is `/BRIC20` only.  C3D27 face-centre and
+centroid nodes are therefore dropped.  The Abaqus and Radioss midside-node
+orders differ, so the converter remaps nodes 13-20 of quadratic hexahedra.
+The generated `/PROP/SOLID` uses `Isolid=16` whenever a quadratic solid is
+present, as required by `/BRIC20`.
+
+Surface-based contact surfaces are built from the corner nodes of the
+converted elements.
+
+Beams and two-dimensional elements:
+
+* B31/B31H/B33/PIPE31 -> two-node `/BEAM`, with the section translated from
+  `*BEAM SECTION` (RECT, BOX, CIRC, PIPE) into `/PROP/BEAM`.  The optional
+  orientation vector on the second section data line is used; otherwise
+  `(0, 0, -1)` is assumed.  B32/PIPE32 (three-node quadratic beams) are
+  written as straight two-node beams with a warning.
+* CPS/CPE/CAX tria and quad families -> `/TRIA` and `/QUAD`.  Abaqus
+  X-Y coordinates are mapped to the Radioss Y-Z plane and `/ANALY` is
+  emitted (`N2D3D=2` for plane strain, `1` for axisymmetric).  Plane stress
+  (CPS) is approximated by plane strain with a warning.  Quadratic 2-D
+  elements are degraded to their corner nodes.
+* Radioss `/TRIA` only supports LAW151 (multifluid); elastic triangle decks
+  are therefore rejected by the starter even though the conversion is
+  correct.  `/QUAD` works with the usual elastic laws.
 
 *ELSET, ELSET (GENERATE supported)
 
