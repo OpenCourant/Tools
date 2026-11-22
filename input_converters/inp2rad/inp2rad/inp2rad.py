@@ -23,6 +23,7 @@ import sys
 import re
 import time
 import argparse
+import math
 
 #---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|
 #-  GLOBAL VARIABLES SECTION
@@ -51,6 +52,18 @@ ELEMENT_NODE_COUNTS = {
     'S3': 3, 'S4': 4, 'S6': 6, 'S8': 8,
     'C3D4': 4, 'C3D6': 6, 'C3D8': 8, 'C3D10': 10,
     'C3D15': 15, 'C3D20': 20, 'C3D27': 27,
+    # single-segment beams and 2-D continuum elements (input node counts)
+    'B31': 2, 'B32': 3, 'TRIA': 3, 'QUAD': 4,
+    'CPS3': 3, 'CPE3': 3, 'CAX3': 3,
+    'CPS6': 6, 'CPE6': 6, 'CAX6': 6,
+    'CPS4': 4, 'CPS4R': 4, 'CPE4': 4, 'CPE4R': 4, 'CAX4': 4, 'CAX4R': 4,
+    'CPS8': 8, 'CPS8R': 8, 'CPE8': 8, 'CPE8R': 8, 'CAX8': 8, 'CAX8R': 8,
+}
+
+TWO_D_TRIANGLES = {'TRIA', 'CPS3', 'CPE3', 'CAX3', 'CPS6', 'CPE6', 'CAX6'}
+TWO_D_QUADS = {
+    'QUAD', 'CPS4', 'CPS4R', 'CPE4', 'CPE4R', 'CAX4', 'CAX4R',
+    'CPS8', 'CPS8R', 'CPE8', 'CPE8R', 'CAX8', 'CAX8R',
 }
 
 # Abaqus spellings that share a Radioss conversion.  Keeping aliases in one
@@ -75,6 +88,13 @@ ELEMENT_ALIASES = {
     'C3D20R': 'C3D20', 'C3D20H': 'C3D20', 'C3D20HT': 'C3D20',
     'C3D20RT': 'C3D20', 'DC3D20': 'C3D20',
     'C3D27R': 'C3D27', 'C3D27H': 'C3D27', 'C3D27RH': 'C3D27',
+    # beams (B32 is degraded to a straight two-node /BEAM)
+    'B31H': 'B31', 'B33': 'B31', 'B33H': 'B31',
+    'PIPE31': 'B31', 'PIPE31H': 'B31',
+    'B32H': 'B32', 'PIPE32': 'B32', 'PIPE32H': 'B32',
+    # 2-D continuum elements keep their Abaqus name so that the reader
+    # sees the right connectivity length; the writer maps them via
+    # TWO_D_TRIANGLES / TWO_D_QUADS below.
 }
 
 
@@ -226,6 +246,10 @@ def convert_nodes(node_data):
             nodes = line.strip().split(',')
             node_id = nodes[0].strip()
             coords = [float(coord.strip()) for coord in nodes[1:]]
+            if len(coords) == 2:
+                # Abaqus 2-D models live in the X-Y plane; Radioss 2-D
+                # elements are defined in the global Y-Z plane.
+                coords = [0.0, coords[0], coords[1]]
             radioss_coords = ''.join(f"{coord:>20.15g}" for coord in coords)
             node_lines[transform_id].append(f"{node_id:>10}{radioss_coords}")
 
@@ -2045,6 +2069,8 @@ def convert_props(input_lines, material_names, non_numeric_references=None, else
         dcoup_line_match = re.search(dcoup_line_pattern, line, re.IGNORECASE)
         spring_line_pattern = r'^\s*\*SPRING\s*,\s*ELSET\s*=\s*[^,]+\s*,?.*$'
         spring_line_match = re.search(spring_line_pattern, line, re.IGNORECASE)
+        beam_line_pattern = r'^\s*\*BEAM\s+(?:GENERAL\s+)?SECTION\s*,'
+        beam_line_match = re.search(beam_line_pattern, line, re.IGNORECASE)
 
         if shell_line_match or shell_general_match:
             section_type = 'shell'
@@ -2125,6 +2151,38 @@ def convert_props(input_lines, material_names, non_numeric_references=None, else
             if i < len(input_lines):
                 next_line = input_lines[i].strip()
                 spring_stiffness = next_line.split(',')[0].strip()
+
+        elif beam_line_match:
+            section_type = 'beam'
+            mat_match = re.search(r'material\s*=\s*([^,]+)', line, re.IGNORECASE)
+            sect_match = re.search(r'section\s*=\s*([^,]+)', line, re.IGNORECASE)
+            elset_match = re.search(elset_pattern, line, re.IGNORECASE)
+            if elset_match:
+                property_name = elset_match.group(1).strip()
+            if mat_match:
+                material_name = mat_match.group(1).strip()
+            beam_section = sect_match.group(1).strip() if sect_match else 'RECT'
+            beam_dims = []
+            beam_orientation = [0.0, 0.0, -1.0]
+            i += 1
+            if i < len(input_lines) and not input_lines[i].strip().startswith('*'):
+                values = []
+                for value in input_lines[i].strip().split(','):
+                    try:
+                        values.append(float(value.strip()))
+                    except ValueError:
+                        pass
+                beam_dims = values
+                i += 1
+                if i < len(input_lines) and not input_lines[i].strip().startswith('*'):
+                    vec = []
+                    for value in input_lines[i].strip().split(','):
+                        try:
+                            vec.append(float(value.strip()))
+                        except ValueError:
+                            pass
+                    if len(vec) == 3:
+                        beam_orientation = vec
 
         elif massdef_line_match:
             section_type = 'massdef'
@@ -2328,6 +2386,16 @@ def convert_props(input_lines, material_names, non_numeric_references=None, else
             prop_id += 1
             part_id_counter += 1
 
+        elif section_type == 'beam':
+            property_names[property_name] = {'prop_id': prop_id, 'part_id': part_id_counter}
+            property_names[property_name]['nint'] = '444'
+            property_names[property_name]['beam_section'] = beam_section
+            property_names[property_name]['beam_dims'] = beam_dims
+            property_names[property_name]['beam_orientation'] = beam_orientation
+            property_names[property_name]['material_name'] = material_name
+            prop_id += 1
+            part_id_counter += 1
+
         elif section_type == 'solid':
             prop_id, part_id_counter = assign_property_to_elsets(property_name, section_type, prop_id, part_id_counter)
             used_helper_function = True
@@ -2486,6 +2554,47 @@ def write_props(property_names, output_file):
             output_file.write(property_display_name + "\n")
             output_file.write("#   Ismstr                                                                            True_Thickness\n")
             output_file.write("        -1                                                                                          \n")
+        elif prop_type == '444': #444 is code for beam elements (/BEAM)
+            dims = property_data.get('beam_dims', [])
+            section = property_data.get('beam_section', 'RECT').upper()
+            def beam_first_dim(index, default):
+                return float(dims[index]) if len(dims) > index else default
+            b = beam_first_dim(0, 1.0)
+            h = beam_first_dim(1, b)
+            if section == 'CIRC':
+                radius = b / 2.0
+                area = math.pi * radius ** 2
+                inertia = math.pi * radius ** 4 / 4.0
+                iyy = izz = inertia
+            elif section in ('PIPE', 'THICK PIPE'):
+                thickness = beam_first_dim(1, b / 10.0)
+                radius = max(b / 2.0 - thickness / 2.0, thickness / 2.0)
+                area = 2.0 * math.pi * radius * thickness
+                inertia = math.pi * radius ** 3 * thickness
+                iyy = izz = inertia
+            elif section == 'BOX' and len(dims) > 2:
+                t = min(beam_first_dim(2, b / 10.0), b / 2.0, h / 2.0)
+                area = b * h - (b - 2 * t) * (h - 2 * t)
+                iyy = (h * b ** 3 - (h - 2 * t) * (b - 2 * t) ** 3) / 12.0
+                izz = (b * h ** 3 - (b - 2 * t) * (h - 2 * t) ** 3) / 12.0
+            else:
+                if section not in ('RECT', 'BOX'):
+                    print(f"### WARNING ###: Beam section {section} approximated as a rectangle")
+                area = b * h
+                iyy = h * b ** 3 / 12.0
+                izz = b * h ** 3 / 12.0
+            ixx = iyy + izz
+            output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
+            output_file.write(f"/PROP/BEAM/{property_id}\n")
+            output_file.write(property_display_name + "\n")
+            output_file.write("#   Ismstr\n")
+            output_file.write("         4\n")
+            output_file.write("#      dm        df\n")
+            output_file.write("         0        .01\n")
+            output_file.write("#          Area          Iyy          Izz          Ixx\n")
+            output_file.write(f"{area:>20.12g}{iyy:>20.12g}{izz:>20.12g}{ixx:>20.12g}\n")
+            output_file.write("#  Rot  Ishear\n")
+            output_file.write(" 000 000         0\n")
         elif prop_type == '999': #999 is code for Solids
             output_file.write("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|\n")
             output_file.write(f"/PROP/SOLID/{property_id}\n")
@@ -3005,8 +3114,29 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, propert
             if prop_data.get('prop_id') == property_id:
                 prop_data['quadratic_solid'] = True
 
+    def property_for(prop_id):
+        for prop_data in property_names.values():
+            if prop_data.get('prop_id') == prop_id:
+                return prop_data
+        return {}
+
+    # Radioss needs /ANALY to declare a 2-D analysis; without it the starter
+    # rejects /TRIA and /QUAD elements (error 286).
+    type_names = [str(t).upper() for t in element_dicts]
+    analysis_type = None
+    if any(name.startswith('CAX') for name in type_names):
+        analysis_type = 1              # axisymmetric, Y radial / Z axis
+    elif any(name.startswith(('CPS', 'CPE')) for name in type_names):
+        analysis_type = 2              # plane strain (Radioss has no plane stress)
+    if analysis_type is not None:
+        if analysis_type == 2 and any(str(t).upper().startswith('CPS')
+                                      for t in element_dicts):
+            print("### WARNING ###: Plane stress is approximated by Radioss plane strain (/ANALY N2D3D=2)")
+        element_lines.extend(["/ANALY", f"{analysis_type:>10}         0", ""])
+
     for element_type, element_list in element_dicts.items():
         etype = canonical_element_type(element_type).lower()
+        raw_type = str(element_type).strip().upper()
 
         for element_dict in element_list:
             elset = element_dict["ELSET"]
@@ -3252,6 +3382,64 @@ def convert_elements(non_numeric_references, elset_dicts, element_dicts, propert
                     sh3n_list.append(element_id)
                     formatted_nodes = ''.join(value.rjust(10) for value in nodes[:3])
                     element_lines.append(f"{element_id:>10}{formatted_nodes}")
+                    add_to_elset(elset, element_id)
+
+            elif etype in ("b31", "b32"):
+                # Radioss /BEAM has two end nodes and an orientation vector.
+                # The vector comes from *BEAM SECTION, or defaults to (0,0,-1).
+                if etype == "b32":
+                    print("### WARNING ###: Quadratic beams are written as straight two-node /BEAM elements")
+                orientation = property_for(property_id).get(
+                    'beam_orientation', [0.0, 0.0, -1.0])
+                vector = [float(value) for value in orientation[:3]]
+                while len(vector) < 3:
+                    vector.append(0.0)
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"# Beam Elements for PART: {part_name}, PID: {part_id}")
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"/BEAM/{part_id}")
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
+                    element_id = element.get('element_id', '')
+                    nodes = list(element.get('nodes', []))
+                    if len(nodes) < 2:
+                        print(f"### WARNING ###: Element {element_id} has fewer than 2 nodes for /BEAM")
+                        continue
+                    ends = [nodes[0], nodes[-1]] if etype == "b32" else nodes[:2]
+                    fields = ''.join(value.rjust(10) for value in ends + [f"{v:g}" for v in vector])
+                    element_lines.append(f"{element_id:>10}{fields}")
+                    add_to_elset(elset, element_id)
+
+            elif raw_type in TWO_D_TRIANGLES:
+                print("### WARNING ###: Radioss /TRIA only supports LAW151 (multifluid); elastic 2-D triangles may be rejected")
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"# 3 Noded 2D Solid Elements for PART: {part_name}, PID: {part_id}")
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"/TRIA/{part_id}")
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
+                    element_id = element.get('element_id', '')
+                    nodes = list(element.get('nodes', []))
+                    if len(nodes) < 3:
+                        print(f"### WARNING ###: Element {element_id} has fewer than 3 nodes for /TRIA")
+                        continue
+                    brick_list.append(element_id)
+                    element_lines.append(
+                        f"{element_id:>10}" + ''.join(v.rjust(10) for v in nodes[:3]))
+                    add_to_elset(elset, element_id)
+
+            elif raw_type in TWO_D_QUADS:
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"# 4 Noded 2D Solid Elements for PART: {part_name}, PID: {part_id}")
+                element_lines.append("#---1----|----2----|----3----|----4----|----5----|----6----|----7----|----8----|----9----|---10----|")
+                element_lines.append(f"/QUAD/{part_id}")
+                for element in sorted(element_dict["elements"], key=lambda e: int(e.get('element_id', 0))):
+                    element_id = element.get('element_id', '')
+                    nodes = list(element.get('nodes', []))
+                    if len(nodes) < 4:
+                        print(f"### WARNING ###: Element {element_id} has fewer than 4 nodes for /QUAD")
+                        continue
+                    brick_list.append(element_id)
+                    element_lines.append(
+                        f"{element_id:>10}" + ''.join(v.rjust(10) for v in nodes[:4]))
                     add_to_elset(elset, element_id)
 
     return elset_dicts, element_lines, sh3n_list, shell_list, brick_list, nsets, nset_counter
@@ -3907,7 +4095,7 @@ def convert_contacts(input_lines, property_names, surf_id, friction_dict, surf_n
                 property_id = int(property_data['prop_id'])
                 part_id = property_data.get('part_id', property_id)  # Use part_id for surface definition
                 # Append the integer 'part_id' to the list (excluding springs and dummy property for masses)
-                if (not property_data['nint'] == '777' and not property_data['nint'] == '555' and not property_data['nint'] == '666'
+                if (property_data['nint'] not in ('777', '555', '666', '444')
                 and part_id not in prop_id_list):
                     prop_id_list.append(part_id)
 

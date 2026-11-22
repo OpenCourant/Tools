@@ -124,6 +124,22 @@ present, as required by `/BRIC20`.
 Surface-based contact surfaces are built from the corner nodes of the
 converted elements.
 
+Beams and two-dimensional elements:
+
+* B31/B31H/B33/PIPE31 -> two-node `/BEAM`, with the section translated from
+  `*BEAM SECTION` (RECT, BOX, CIRC, PIPE) into `/PROP/BEAM`.  The optional
+  orientation vector on the second section data line is used; otherwise
+  `(0, 0, -1)` is assumed.  B32/PIPE32 (three-node quadratic beams) are
+  written as straight two-node beams with a warning.
+* CPS/CPE/CAX tria and quad families -> `/TRIA` and `/QUAD`.  Abaqus
+  X-Y coordinates are mapped to the Radioss Y-Z plane and `/ANALY` is
+  emitted (`N2D3D=2` for plane strain, `1` for axisymmetric).  Plane stress
+  (CPS) is approximated by plane strain with a warning.  Quadratic 2-D
+  elements are degraded to their corner nodes.
+* Radioss `/TRIA` only supports LAW151 (multifluid); elastic triangle decks
+  are therefore rejected by the starter even though the conversion is
+  correct.  `/QUAD` works with the usual elastic laws.
+
 *ELSET, ELSET (GENERATE supported)
 
 *FRICTION (with coefficient on next line)
